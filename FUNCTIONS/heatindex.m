@@ -1,10 +1,16 @@
-function [heat,in]=heatindex(tmpf,relh);
+function [heat]=heatindex(tmpf,relh);
 
 % computes the NWS heat indices using formulas from Steadman (1979)
 % heat is heat index in degrees F
-% in is index for whether the data fall within bounds in=0, or compromise
-% conditions for which the heat index does not work as well
-%
+% heat is prescribed values of
+% 0 is there is missing data
+% 1 when temp<40F
+% 2 when temp>87F and rh>85F (no-analog)
+% 3 when temperature and RH exceed values along the diagonal (no-analog)
+% 4 when temp>112F and RH>13% (no-analog)
+% all other values are recast to unsigned integers for computation
+% efficiency
+
 
 % /************************************************************************
 %  * pd_heat								*
@@ -50,8 +56,7 @@ function [heat,in]=heatindex(tmpf,relh);
 
 %If the temperature is less than 40 degrees, then set the heat index to the temperature.
 relh=relh';tmpf=tmpf';
-heat=single(NaN*ones(size(tmpf)));
-in=int8(-1*ones(size(tmpf)));
+heat=(zeros(size(tmpf)));
 f=find(tmpf<=40);heat(f)=tmpf(f);
 
 % if temperature is above 40 then calculate heat indices
@@ -86,23 +91,22 @@ adj  = adj1 .* adj2;
 heat(f2) = heat(f2)+adj;
 
 % in=3 for invalid data along the diagonal
-f=find(tmpf>102 & relh>40);in(f)=3;
-f=find(tmpf>101 & relh>50);in(f)=3;
-f=find(tmpf>100 & relh>55);in(f)=3;
-f=find(tmpf>98 & relh>60);in(f)=3;
-f=find(tmpf>97 & relh>65);in(f)=3;
-f=find(tmpf>96 & relh>70);in(f)=3;
-f=find(tmpf>95 & relh>75);in(f)=3;
-f=find(tmpf>92 & relh>80);in(f)=3;
+f=find(tmpf>102 & relh>40);heat(f)=3;
+f=find(tmpf>101 & relh>50);heat(f)=3;
+f=find(tmpf>100 & relh>55);heat(f)=3;
+f=find(tmpf>98 & relh>60);heat(f)=3;
+f=find(tmpf>97 & relh>65);heat(f)=3;
+f=find(tmpf>96 & relh>70);heat(f)=3;
+f=find(tmpf>95 & relh>75);heat(f)=3;
+f=find(tmpf>92 & relh>80);heat(f)=3;
 
-% in=1 for muggy+hot conditions temp>87 and rh>85
-f=find(tmpf>87 & relh>=85);in(f)=1;
+% in=2 for muggy+hot conditions temp>87 and rh>85
+f=find(tmpf>87 & relh>=85);heat(f)=2;
 
-% in=2 for really hot temperatures with rh>13
-f=find(tmpf>112 & relh>13);in(f)=2;
+% in=4 for really hot temperatures with rh>13
+f=find(tmpf>112 & relh>13);heat(f)=2;
 
-% set any of heat index outside of bounds to missing
-f=find(in>0);heat(f)=NaN;
+% in=1 for cold temperatures temp<40
+f=find(tmpf<40);heat(f)=1;
 
-% set in=0 for valid values of heat index
-f=find(~isnan(heat));in(f)=0;
+heat=uint8(heat);
